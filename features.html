@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Julian's Glass Chat - Features</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      color: white;
+      margin: 0;
+      overflow-x: hidden;
+    }
+    .immersive-bg {
+      position: fixed;
+      inset: 0;
+      background: url('https://images.unsplash.com/photo-1618588507085-c79565432917?q=80&w=2574&auto=format&fit=crop') no-repeat center center;
+      background-size: cover;
+      z-index: -1;
+    }
+    .glass-panel {
+      background: rgba(0, 0, 0, 0.35);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .glass-chip {
+      background: rgba(255, 255, 255, 0.15);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col">
+  <div class="immersive-bg"></div>
+
+  <header class="px-6 py-5 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 rounded-full overflow-hidden border border-white/20">
+        <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=100&h=100" class="w-full h-full object-cover" alt="avatar" />
+      </div>
+      <div>
+        <p class="text-sm uppercase tracking-[0.3em] text-white/50">ZMESSAGE</p>
+        <h1 class="text-lg font-semibold">Features</h1>
+      </div>
+    </div>
+    <nav class="flex items-center gap-4 text-sm text-white/70">
+      <a href="index.html" class="hover:text-white transition">Home</a>
+      <a href="features.html" class="hover:text-white transition">Features</a>
+      <a href="about.html" class="hover:text-white transition">About</a>
+      <a href="chat.html" class="glass-chip px-4 py-2 rounded-full text-white font-semibold">Open Chat</a>
+    </nav>
+  </header>
+
+  <main class="flex-1 px-6 pb-16">
+    <section class="max-w-5xl mx-auto mt-8 glass-panel rounded-3xl p-8 md:p-12 space-y-8">
+      <div>
+        <span class="glass-chip inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs text-white/80">Feature lineup</span>
+        <h2 class="text-3xl md:text-4xl font-semibold mt-4">Everything you need to run a beautiful group chat.</h2>
+      </div>
+      <div class="grid md:grid-cols-2 gap-6">
+        <div class="glass-panel rounded-2xl p-6">
+          <h3 class="text-lg font-semibold">Glassy UI</h3>
+          <p class="text-white/70 mt-3 text-sm">Blurred panels, translucent chat bubbles, and soft shadows keep the look consistent across pages.</p>
+        </div>
+        <div class="glass-panel rounded-2xl p-6">
+          <h3 class="text-lg font-semibold">Markdown replies</h3>
+          <p class="text-white/70 mt-3 text-sm">Ghost responds with markdown, so code blocks and emphasis render beautifully in chat.</p>
+        </div>
+        <div class="glass-panel rounded-2xl p-6">
+          <h3 class="text-lg font-semibold">Persistent settings</h3>
+          <p class="text-white/70 mt-3 text-sm">Store Base URL, API Key, and model in local storage so the experience stays fast.</p>
+        </div>
+        <div class="glass-panel rounded-2xl p-6">
+          <h3 class="text-lg font-semibold">Mobile-first layout</h3>
+          <p class="text-white/70 mt-3 text-sm">Tuned for iOS scroll and typography, but scales cleanly on larger screens.</p>
+        </div>
+      </div>
+      <div class="flex flex-wrap gap-3">
+        <a href="chat.html" class="bg-[#007AFF] hover:bg-blue-500 text-white font-semibold px-6 py-3 rounded-full shadow-lg shadow-blue-500/30 transition">Start chatting</a>
+        <a href="about.html" class="glass-chip text-white/90 font-semibold px-6 py-3 rounded-full transition">Meet the team</a>
+      </div>
+    </section>
+  </main>
+
+  <footer class="px-6 pb-8 text-white/50 text-xs">
+    <div class="max-w-5xl mx-auto flex flex-col md:flex-row justify-between gap-3">
+      <span>ZMESSAGE features list — keep your vibe consistent.</span>
+      <span>Need the chat? Tap Open Chat in the top-right.</span>
+    </div>
+  </footer>
+</body>
+</html>

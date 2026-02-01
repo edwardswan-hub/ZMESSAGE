@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Julian's Glass Chat - Home</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      color: white;
+      margin: 0;
+      overflow-x: hidden;
+      background: #0b0b0e;
+    }
+    .immersive-bg {
+      position: fixed;
+      inset: 0;
+      background: url('https://images.unsplash.com/photo-1618588507085-c79565432917?q=80&w=2574&auto=format&fit=crop') no-repeat center center;
+      background-size: cover;
+      z-index: -1;
+    }
+    .glass-panel {
+      background: rgba(0, 0, 0, 0.35);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .glass-chip {
+      background: rgba(255, 255, 255, 0.15);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col">
+  <div class="immersive-bg"></div>
+
+  <header class="px-6 py-5 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 rounded-full overflow-hidden border border-white/20">
+        <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=100&h=100" class="w-full h-full object-cover" alt="avatar" />
+      </div>
+      <div>
+        <p class="text-sm uppercase tracking-[0.3em] text-white/50">ZMESSAGE</p>
+        <h1 class="text-lg font-semibold">Julian's Glass Chat</h1>
+      </div>
+    </div>
+    <nav class="flex items-center gap-4 text-sm text-white/70">
+      <a href="index.html" class="hover:text-white transition">Home</a>
+      <a href="features.html" class="hover:text-white transition">Features</a>
+      <a href="about.html" class="hover:text-white transition">About</a>
+      <a href="chat.html" class="glass-chip px-4 py-2 rounded-full text-white font-semibold">Open Chat</a>
+    </nav>
+  </header>
+
+  <main class="flex-1 px-6 pb-16">
+    <section class="max-w-5xl mx-auto mt-8">
+      <div class="glass-panel rounded-3xl p-8 md:p-12 shadow-xl">
+        <div class="flex flex-col md:flex-row gap-10 items-center">
+          <div class="flex-1 space-y-6">
+            <span class="glass-chip inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs text-white/80">
+              <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+              Always-on group vibes
+            </span>
+            <h2 class="text-3xl md:text-4xl font-semibold leading-tight">
+              A glassy group chat experience for your favorite friends and AI buddy.
+            </h2>
+            <p class="text-white/70 leading-relaxed">
+              ZMESSAGE is a full-screen, iOS-inspired chat room with immersive glassmorphism, fast replies, and a built-in AI companion. Keep the style you love while adding a polished home and supporting pages.
+            </p>
+            <div class="flex flex-wrap gap-4">
+              <a href="chat.html" class="bg-[#007AFF] hover:bg-blue-500 text-white font-semibold px-6 py-3 rounded-full shadow-lg shadow-blue-500/30 transition">Enter the Chat</a>
+              <a href="features.html" class="glass-chip text-white/90 font-semibold px-6 py-3 rounded-full transition">See Features</a>
+            </div>
+          </div>
+          <div class="flex-1 w-full">
+            <div class="glass-panel rounded-2xl p-6 space-y-4">
+              <h3 class="text-xl font-semibold">What’s inside</h3>
+              <ul class="space-y-3 text-white/75 text-sm">
+                <li class="flex items-start gap-3">
+                  <span class="text-[#007AFF]">●</span>
+                  <span>Immersive background and glass chat surfaces.</span>
+                </li>
+                <li class="flex items-start gap-3">
+                  <span class="text-[#007AFF]">●</span>
+                  <span>AI responses with markdown support.</span>
+                </li>
+                <li class="flex items-start gap-3">
+                  <span class="text-[#007AFF]">●</span>
+                  <span>Settings modal with base URL, key, and model.</span>
+                </li>
+              </ul>
+              <div class="flex flex-wrap gap-2">
+                <span class="glass-chip px-3 py-1 rounded-full text-xs text-white/70">Realtime vibe</span>
+                <span class="glass-chip px-3 py-1 rounded-full text-xs text-white/70">Mobile-first</span>
+                <span class="glass-chip px-3 py-1 rounded-full text-xs text-white/70">Markdown-ready</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="max-w-5xl mx-auto mt-12 grid md:grid-cols-3 gap-6">
+      <div class="glass-panel rounded-2xl p-6">
+        <h3 class="text-lg font-semibold">Instant Setup</h3>
+        <p class="text-white/70 mt-3 text-sm">Drop in your API details once and keep them stored locally for future sessions.</p>
+      </div>
+      <div class="glass-panel rounded-2xl p-6">
+        <h3 class="text-lg font-semibold">Designed for iOS</h3>
+        <p class="text-white/70 mt-3 text-sm">Spacing, type, and interactions feel native on mobile while staying crisp on desktop.</p>
+      </div>
+      <div class="glass-panel rounded-2xl p-6">
+        <h3 class="text-lg font-semibold">Group-ready</h3>
+        <p class="text-white/70 mt-3 text-sm">Layer in your friends and AI persona to keep the group chat playful.</p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="px-6 pb-8 text-white/50 text-xs">
+    <div class="max-w-5xl mx-auto flex flex-col md:flex-row justify-between gap-3">
+      <span>© 2024 ZMESSAGE. Crafted with glass and glow.</span>
+      <span>Need help? Jump into the chat settings to connect your model.</span>
+    </div>
+  </footer>
+</body>
+</html>
