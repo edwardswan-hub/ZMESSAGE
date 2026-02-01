@@ -1,0 +1,855 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Julian's Glass Chat — Single File</title>
+
+  <!-- Tailwind -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Markdown + XSS Sanitizer -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.11/dist/purify.min.js"></script>
+
+  <style>
+    /* iOS Base */
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      color: white;
+      -webkit-tap-highlight-color: transparent;
+      margin: 0;
+      overflow: hidden;
+    }
+
+    /* Immersive Background */
+    .immersive-bg {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: url('https://images.unsplash.com/photo-1618588507085-c79565432917?q=80&w=2574&auto=format&fit=crop') no-repeat center center;
+      background-size: cover;
+      z-index: -1;
+    }
+
+    /* Glassmorphism Utilities */
+    .glass-panel {
+      background: rgba(0, 0, 0, 0.25);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .glass-bubble-in {
+      background: rgba(50, 50, 50, 0.6);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      color: #f2f2f2;
+    }
+
+    .bubble-out {
+      background: #007AFF; /* iMessage Blue */
+      box-shadow: 0 4px 12px rgba(0, 122, 255, 0.3);
+      color: white;
+    }
+
+    /* Shapes */
+    .bubble-in-shape { border-radius: 18px 18px 18px 4px; }
+    .bubble-out-shape { border-radius: 18px 18px 4px 18px; }
+
+    /* Scrollbars */
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+    /* Animations */
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .msg-anim { animation: slideUp 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
+
+    /* Markdown Styles */
+    .markdown-body p { margin: 0; }
+    .markdown-body code {
+      background: rgba(0,0,0,0.3);
+      padding: 2px 5px;
+      border-radius: 4px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 0.9em;
+    }
+    .markdown-body pre {
+      background: rgba(0,0,0,0.3);
+      padding: 8px;
+      border-radius: 8px;
+      overflow-x: auto;
+      margin: 4px 0;
+    }
+
+    /* Input Placeholder color */
+    ::placeholder { color: rgba(235, 235, 245, 0.6); }
+
+    /* Settings / Overlays */
+    .settings-overlay {
+      background: rgba(0,0,0,0.6);
+      backdrop-filter: blur(5px);
+    }
+
+    /* Footer mask (you referenced it; now it exists) */
+    .mask-gradient-b {
+      -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 35%, black 100%);
+      mask-image: linear-gradient(to bottom, transparent 0%, black 35%, black 100%);
+    }
+
+    /* Simple view switch */
+    .view { display: none; }
+    .view.active { display: flex; }
+
+    /* Prevent selection bounce */
+    * { -webkit-user-select: none; user-select: none; }
+    textarea, input { -webkit-user-select: text; user-select: text; }
+  </style>
+</head>
+
+<body class="h-screen">
+  <!-- Background Layer -->
+  <div class="immersive-bg"></div>
+
+  <!-- =========================
+       HOME VIEW (Chat List)
+       ========================= -->
+  <section id="view-home" class="view active h-screen flex-col">
+    <header class="flex items-center justify-between px-4 pt-4 pb-2 z-10">
+      <div class="flex items-center gap-2 text-white/80">
+        <span class="font-semibold text-white text-[17px] tracking-wide drop-shadow-md">Chats</span>
+      </div>
+      <div class="flex items-center gap-4 text-white/90">
+        <button id="btn-open-settings-home" class="cursor-pointer hover:rotate-90 transition-all duration-300" aria-label="Settings">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <main class="flex-1 overflow-y-auto px-4 py-2 space-y-3 no-scrollbar pb-28" id="chat-list"></main>
+
+    <footer class="fixed bottom-0 w-full px-4 py-3 pb-8 z-30">
+      <div class="absolute inset-0 bg-black/10 backdrop-filter backdrop-blur-sm -z-10 mask-gradient-b"></div>
+      <div class="flex items-center gap-3">
+        <input id="home-search" placeholder="Search"
+               class="flex-1 bg-white/10 backdrop-blur-md border border-white/10 rounded-[20px] px-4 py-2 text-white outline-none focus:bg-white/20 focus:border-white/30" />
+        <button id="btn-new-chat" class="w-10 h-10 rounded-full bg-[#007AFF] flex items-center justify-center shadow-lg shadow-blue-500/20">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 5v14M5 12h14"></path>
+          </svg>
+        </button>
+      </div>
+    </footer>
+  </section>
+
+  <!-- =========================
+       CHAT VIEW (Your Original Style)
+       ========================= -->
+  <section id="view-chat" class="view h-screen flex-col">
+    <!-- Header (Glassy) -->
+    <header class="flex items-center justify-between px-4 pt-4 pb-2 z-10">
+      <div class="flex items-center gap-1 text-white/80 cursor-pointer" id="btn-back-home">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M15 18l-6-6 6-6"></path>
+        </svg>
+        <div class="w-8 h-8 rounded-full overflow-hidden border border-white/20 mx-1">
+          <img id="chat-avatar" src="https://api.dicebear.com/9.x/avataaars/svg?seed=Ghost" class="w-full h-full object-cover" alt="avatar">
+        </div>
+      </div>
+
+      <div class="flex flex-col items-center cursor-pointer" id="btn-open-actions">
+        <div class="flex items-center gap-1">
+          <span id="chat-title" class="font-semibold text-white text-[17px] tracking-wide drop-shadow-md">Buds</span>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" class="text-white/60 rotate-90">
+            <path d="M8 5v14l11-7z"></path>
+          </svg>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-4 text-white/90">
+        <button id="btn-export" class="text-white/90" aria-label="Export">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <path d="M7 10l5 5 5-5"></path>
+            <path d="M12 15V3"></path>
+          </svg>
+        </button>
+        <button id="btn-open-settings-chat" class="cursor-pointer hover:rotate-90 transition-all duration-300" aria-label="Settings">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Chat Area -->
+    <main id="chat-container" class="flex-1 overflow-y-auto px-4 py-2 space-y-6 no-scrollbar pb-24"></main>
+
+    <!-- Typing Indicator -->
+    <div id="typing-indicator" class="hidden absolute bottom-24 left-14 z-20">
+      <div class="glass-bubble-in bubble-in-shape px-4 py-3 flex gap-1.5 items-center">
+        <div class="w-2 h-2 bg-white/60 rounded-full animate-bounce" style="animation-delay: 0s"></div>
+        <div class="w-2 h-2 bg-white/60 rounded-full animate-bounce" style="animation-delay: 0.2s"></div>
+        <div class="w-2 h-2 bg-white/60 rounded-full animate-bounce" style="animation-delay: 0.4s"></div>
+      </div>
+    </div>
+
+    <!-- Footer Input -->
+    <footer class="fixed bottom-0 w-full px-4 py-3 pb-8 z-30">
+      <div class="absolute inset-0 bg-black/10 backdrop-filter backdrop-blur-sm -z-10 mask-gradient-b"></div>
+
+      <div class="flex items-end gap-3">
+        <button id="plus-btn" class="w-9 h-9 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center text-white shrink-0 mb-0.5 hover:bg-white/30 transition">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 5v14M5 12h14"></path>
+          </svg>
+        </button>
+
+        <div class="flex-1 min-h-[38px] bg-white/10 backdrop-blur-md border border-white/10 rounded-[20px] px-4 py-2 flex items-center gap-2 transition-all focus-within:bg-white/20 focus-within:border-white/30">
+          <textarea id="msgInput" rows="1" placeholder="iMessage"
+            class="w-full bg-transparent text-white text-[17px] placeholder-white/50 outline-none resize-none max-h-32 overflow-y-auto"
+            style="height: 24px;"></textarea>
+
+          <!-- Stop (shows while generating) -->
+          <button id="stop-btn" class="hidden w-7 h-7 bg-white/20 rounded-full items-center justify-center shrink-0">
+            <span class="text-white text-xs font-semibold">■</span>
+          </button>
+
+          <!-- Send -->
+          <button id="send-btn" class="hidden w-7 h-7 bg-[#007AFF] rounded-full items-center justify-center shrink-0 animate-in fade-in zoom-in duration-200">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 19V5M5 12l7-7 7 7"></path>
+            </svg>
+          </button>
+        </div>
+
+        <!-- Mic -->
+        <button id="mic-btn" class="w-9 h-9 flex items-center justify-center text-white shrink-0 mb-0.5">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+            <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+            <line x1="12" y1="19" x2="12" y2="23"></line>
+            <line x1="8" y1="23" x2="16" y2="23"></line>
+          </svg>
+        </button>
+      </div>
+    </footer>
+  </section>
+
+  <!-- =========================
+       ACTIONS MODAL (Clear Chat etc.)
+       ========================= -->
+  <div id="actions-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center px-6 settings-overlay">
+    <div class="absolute inset-0" id="actions-close"></div>
+    <div class="w-full max-w-sm bg-[#1c1c1e]/80 backdrop-blur-xl border border-white/10 rounded-3xl p-6 shadow-2xl relative">
+      <h2 class="text-xl font-bold text-center mb-1">Chat Actions</h2>
+      <p class="text-white/40 text-xs text-center mb-6">Do dangerous things elegantly.</p>
+
+      <div class="space-y-3">
+        <button id="btn-clear-chat" class="w-full bg-white/10 text-white font-medium py-3 rounded-2xl hover:bg-white/20 transition">Clear Chat</button>
+        <button id="btn-open-settings-actions" class="w-full bg-[#007AFF] text-white font-bold py-3 rounded-2xl hover:bg-blue-600 transition shadow-lg shadow-blue-500/20">Settings</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================
+       SETTINGS MODAL (Glassy, same vibe)
+       ========================= -->
+  <div id="settings-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center px-6 settings-overlay">
+    <div class="absolute inset-0" id="settings-close"></div>
+    <div class="w-full max-w-sm bg-[#1c1c1e]/80 backdrop-blur-xl border border-white/10 rounded-3xl p-6 shadow-2xl transform transition-all scale-100 relative">
+      <h2 class="text-xl font-bold text-center mb-1">Neural Engine 🧠</h2>
+      <p class="text-white/40 text-xs text-center mb-6">Connect to the mainframe</p>
+
+      <div class="space-y-4">
+        <div class="group">
+          <label class="block text-[10px] text-white/40 mb-1 ml-3 uppercase tracking-wider font-semibold">Base URL</label>
+          <input type="text" id="api-url"
+            class="w-full bg-black/20 border border-white/5 rounded-2xl px-4 py-3 text-[15px] text-white focus:outline-none focus:bg-black/40 transition-colors"
+            placeholder="https://api.openai.com/v1">
+        </div>
+
+        <div class="group">
+          <label class="block text-[10px] text-white/40 mb-1 ml-3 uppercase tracking-wider font-semibold">API Key</label>
+          <input type="password" id="api-key"
+            class="w-full bg-black/20 border border-white/5 rounded-2xl px-4 py-3 text-[15px] text-white focus:outline-none focus:bg-black/40 transition-colors"
+            placeholder="sk-...">
+        </div>
+
+        <div class="group">
+          <label class="block text-[10px] text-white/40 mb-1 ml-3 uppercase tracking-wider font-semibold">Model</label>
+          <input type="text" id="model-name"
+            class="w-full bg-black/20 border border-white/5 rounded-2xl px-4 py-3 text-[15px] text-white focus:outline-none focus:bg-black/40 transition-colors"
+            value="gpt-4o-mini">
+        </div>
+
+        <div class="group">
+          <label class="block text-[10px] text-white/40 mb-1 ml-3 uppercase tracking-wider font-semibold">System Prompt</label>
+          <textarea id="system-prompt" rows="4"
+            class="w-full bg-black/20 border border-white/5 rounded-2xl px-4 py-3 text-[14px] text-white focus:outline-none focus:bg-black/40 transition-colors resize-none"></textarea>
+        </div>
+
+        <div class="flex items-center justify-between">
+          <div class="text-white/70 text-sm">Stream Output</div>
+          <input id="stream-toggle" type="checkbox" class="scale-125 accent-[#007AFF]">
+        </div>
+
+        <div class="group">
+          <label class="block text-[10px] text-white/40 mb-1 ml-3 uppercase tracking-wider font-semibold">Temperature</label>
+          <input id="temp" type="range" min="0" max="2" step="0.1" class="w-full">
+          <div class="text-right text-white/50 text-xs mt-1"><span id="tempVal"></span></div>
+        </div>
+      </div>
+
+      <div class="mt-8 flex gap-3">
+        <button id="settings-cancel" class="flex-1 bg-white/10 text-white font-medium py-3 rounded-2xl hover:bg-white/20 transition">Cancel</button>
+        <button id="settings-save" class="flex-1 bg-[#007AFF] text-white font-bold py-3 rounded-2xl hover:bg-blue-600 transition shadow-lg shadow-blue-500/20">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /***********************
+     * STORAGE
+     ***********************/
+    const LS = {
+      config: "im_config_v1_single",
+      chats: "im_chats_v1_single",
+      msgsPrefix: "im_msgs_single_", // + chatId
+      activeChat: "im_active_chat_single"
+    };
+
+    function loadConfig() {
+      const raw = localStorage.getItem(LS.config);
+      return raw ? JSON.parse(raw) : {
+        baseUrl: "https://api.openai.com/v1",
+        apiKey: "",
+        model: "gpt-4o-mini",
+        system: "You are 'Ghost', a cool, z-gen AI in a group chat called 'Buds'. You are witty, use emojis, and love pop culture. Keep it short. Markdown allowed.",
+        stream: true,
+        temperature: 0.7
+      };
+    }
+    function saveConfig(cfg) { localStorage.setItem(LS.config, JSON.stringify(cfg)); }
+
+    function loadChats() {
+      const raw = localStorage.getItem(LS.chats);
+      return raw ? JSON.parse(raw) : [];
+    }
+    function saveChats(chats) { localStorage.setItem(LS.chats, JSON.stringify(chats)); }
+
+    function loadMessages(chatId) {
+      const raw = localStorage.getItem(LS.msgsPrefix + chatId);
+      return raw ? JSON.parse(raw) : [];
+    }
+    function saveMessages(chatId, msgs) {
+      localStorage.setItem(LS.msgsPrefix + chatId, JSON.stringify(msgs));
+    }
+    function pushMessage(chatId, msg) {
+      const msgs = loadMessages(chatId);
+      msgs.push(msg);
+      saveMessages(chatId, msgs);
+      return msgs;
+    }
+
+    function uuid() {
+      if (crypto && crypto.randomUUID) return crypto.randomUUID();
+      return "xxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, c => {
+        const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+      });
+    }
+
+    function createChat({ title="Buds", subtitle="Group Chat", avatarSeed="Ghost" } = {}) {
+      const chats = loadChats();
+      const id = "chat_" + uuid();
+      const now = Date.now();
+      const chat = { id, title, subtitle, avatarSeed, createdAt: now, updatedAt: now, lastMessage: "" };
+      chats.unshift(chat);
+      saveChats(chats);
+      saveMessages(id, []);
+      localStorage.setItem(LS.activeChat, id);
+      return chat;
+    }
+
+    function updateChat(chatId, patch) {
+      const chats = loadChats();
+      const idx = chats.findIndex(c => c.id === chatId);
+      if (idx >= 0) {
+        chats[idx] = { ...chats[idx], ...patch, updatedAt: Date.now() };
+        saveChats(chats);
+      }
+    }
+
+    /***********************
+     * UTIL
+     ***********************/
+    const $ = (sel, root=document) => root.querySelector(sel);
+    const escapeHtml = (str) => (str || "").replace(/[&<>"']/g, s => ({
+      "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+    }[s]));
+    const mdSafe = (md) => DOMPurify.sanitize(marked.parse(md || ""), { USE_PROFILES: { html: true } });
+
+    function scrollToBottom(el) { el.scrollTop = el.scrollHeight; }
+
+    /***********************
+     * VIEWS
+     ***********************/
+    const viewHome = $("#view-home");
+    const viewChat = $("#view-chat");
+
+    function showView(name) {
+      viewHome.classList.toggle("active", name === "home");
+      viewChat.classList.toggle("active", name === "chat");
+    }
+
+    /***********************
+     * HOME UI
+     ***********************/
+    const chatListEl = $("#chat-list");
+    const homeSearchEl = $("#home-search");
+    const btnNewChat = $("#btn-new-chat");
+
+    function renderHome() {
+      const q = (homeSearchEl.value || "").toLowerCase().trim();
+      const chats = loadChats().filter(c =>
+        !q || c.title.toLowerCase().includes(q) || (c.lastMessage || "").toLowerCase().includes(q)
+      );
+
+      chatListEl.innerHTML = chats.length ? chats.map(chatCardHTML).join("") : emptyHomeHTML();
+
+      chatListEl.querySelectorAll("[data-open]").forEach(el => {
+        el.addEventListener("click", () => openChat(el.getAttribute("data-open")));
+      });
+    }
+
+    function chatCardHTML(c) {
+      const time = new Date(c.updatedAt || c.createdAt).toLocaleString();
+      return `
+        <div data-open="${c.id}" class="glass-panel rounded-3xl p-4 flex items-center gap-3 cursor-pointer active:scale-[0.99] transition">
+          <img src="https://api.dicebear.com/9.x/avataaars/svg?seed=${encodeURIComponent(c.avatarSeed)}"
+               class="w-10 h-10 rounded-full bg-white/10 backdrop-blur-md border border-white/20" alt="avatar">
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center justify-between gap-2">
+              <div class="font-semibold text-white truncate">${escapeHtml(c.title)}</div>
+              <div class="text-[11px] text-white/50 shrink-0">${time}</div>
+            </div>
+            <div class="text-[13px] text-white/60 truncate">${escapeHtml(c.lastMessage || c.subtitle || "No messages yet.")}</div>
+          </div>
+        </div>
+      `;
+    }
+
+    function emptyHomeHTML() {
+      return `
+        <div class="glass-panel rounded-3xl p-6 text-center text-white/70">
+          <div class="text-lg font-semibold mb-1">No chats yet</div>
+          <div class="text-sm text-white/50">Hit + to start a new one.</div>
+        </div>
+      `;
+    }
+
+    homeSearchEl.addEventListener("input", renderHome);
+    btnNewChat.addEventListener("click", () => {
+      const chat = createChat();
+      openChat(chat.id);
+    });
+
+    /***********************
+     * CHAT UI (Your style + persistence + stream + abort)
+     ***********************/
+    const btnBackHome = $("#btn-back-home");
+    const chatTitleEl = $("#chat-title");
+    const chatAvatarEl = $("#chat-avatar");
+    const chatContainer = $("#chat-container");
+    const typingIndicator = $("#typing-indicator");
+
+    const input = $("#msgInput");
+    const sendBtn = $("#send-btn");
+    const micBtn = $("#mic-btn");
+    const stopBtn = $("#stop-btn");
+
+    const btnOpenActions = $("#btn-open-actions");
+    const actionsModal = $("#actions-modal");
+    const actionsClose = $("#actions-close");
+    const btnClearChat = $("#btn-clear-chat");
+    const btnOpenSettingsActions = $("#btn-open-settings-actions");
+    const btnExport = $("#btn-export");
+
+    let activeChatId = localStorage.getItem(LS.activeChat) || null;
+    let aborter = null;
+
+    btnBackHome.addEventListener("click", () => {
+      showView("home");
+      renderHome();
+    });
+
+    function openChat(chatId) {
+      activeChatId = chatId;
+      localStorage.setItem(LS.activeChat, chatId);
+
+      const chat = loadChats().find(c => c.id === chatId);
+      chatTitleEl.textContent = chat?.title || "Buds";
+      chatAvatarEl.src = `https://api.dicebear.com/9.x/avataaars/svg?seed=${encodeURIComponent(chat?.avatarSeed || "Ghost")}`;
+
+      hydrateChat();
+      showView("chat");
+      setTimeout(() => scrollToBottom(chatContainer), 50);
+    }
+
+    function hydrateChat() {
+      chatContainer.innerHTML = "";
+      const msgs = loadMessages(activeChatId);
+
+      // if empty, seed vibe (optional)
+      if (!msgs.length) {
+        const seed = { role: "assistant", content: "Ooo smart 🧠. Set up my brain in settings ⚙️ so I can join the gossip.", at: Date.now() };
+        pushMessage(activeChatId, seed);
+      }
+
+      for (const m of loadMessages(activeChatId)) {
+        addMessage(m, m.role === "user" ? "out" : "in");
+      }
+      scrollToBottom(chatContainer);
+    }
+
+    // Auto-resize + send/mic toggle
+    input.addEventListener("input", function() {
+      this.style.height = "auto";
+      this.style.height = (this.scrollHeight) + "px";
+
+      const has = this.value.trim().length > 0;
+      micBtn.classList.toggle("hidden", has);
+      sendBtn.classList.toggle("hidden", !has);
+      sendBtn.classList.toggle("flex", has);
+    });
+
+    sendBtn.addEventListener("click", handleSend);
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        handleSend();
+      }
+    });
+
+    stopBtn.addEventListener("click", () => {
+      if (aborter) aborter.abort();
+    });
+
+    function showTyping(show) {
+      typingIndicator.classList.toggle("hidden", !show);
+      if (show) scrollToBottom(chatContainer);
+    }
+
+    function addMessage(msg, type, opts = {}) {
+      const isOut = type === "out";
+      const name = isOut ? "" : `<span class="text-[11px] text-white/60 ml-12 font-medium mb-1 block">Ghost (AI) 👻</span>`;
+      const avatar = isOut ? "" : `<img src="https://api.dicebear.com/9.x/avataaars/svg?seed=Ghost" class="w-8 h-8 rounded-full bg-white/10 backdrop-blur-md border border-white/20 shrink-0" alt="Ghost">`;
+
+      const bubbleClass = isOut
+        ? "bubble-out bubble-out-shape ml-auto text-white"
+        : "glass-bubble-in bubble-in-shape text-[#f2f2f2]";
+
+      const content = isOut ? escapeHtml(msg.content) : mdSafe(msg.content);
+      const delivered = isOut ? `<div class="text-[10px] text-white/40 font-medium text-right mt-1 mr-1">Delivered</div>` : "";
+
+      const html = `
+        <div class="msg-anim mb-4 w-full">
+          ${name}
+          <div class="flex items-end gap-3 ${isOut ? "justify-end" : ""}">
+            ${avatar}
+            <div class="${bubbleClass} px-4 py-2.5 max-w-[75%] text-[16px] leading-snug break-words shadow-sm markdown-body" data-live="${opts.asLive ? "1" : "0"}">
+              ${content}
+            </div>
+          </div>
+          ${delivered}
+        </div>
+      `;
+      chatContainer.insertAdjacentHTML("beforeend", html);
+      scrollToBottom(chatContainer);
+
+      // return last bubble element if live
+      if (opts.asLive) {
+        const bubbles = chatContainer.querySelectorAll('[data-live="1"]');
+        return bubbles[bubbles.length - 1];
+      }
+      return null;
+    }
+
+    async function handleSend() {
+      const text = input.value.trim();
+      if (!text || !activeChatId) return;
+
+      const cfg = loadConfig();
+
+      // user msg
+      const userMsg = { role: "user", content: text, at: Date.now() };
+      pushMessage(activeChatId, userMsg);
+      addMessage(userMsg, "out");
+
+      // reset input
+      input.value = "";
+      input.style.height = "24px";
+      micBtn.classList.remove("hidden");
+      sendBtn.classList.add("hidden");
+      sendBtn.classList.remove("flex");
+
+      if (!cfg.apiKey) {
+        const hint = { role: "assistant", content: "Bro, I need keys. Go to settings ⚙️.", at: Date.now() };
+        pushMessage(activeChatId, hint);
+        addMessage(hint, "in");
+        updateChat(activeChatId, { lastMessage: hint.content.slice(0, 80) });
+        return;
+      }
+
+      showTyping(true);
+      stopBtn.classList.remove("hidden");
+      stopBtn.classList.add("flex");
+
+      aborter = new AbortController();
+      const signal = aborter.signal;
+
+      // prepare history
+      const history = loadMessages(activeChatId);
+      const apiMessages = [
+        { role: "system", content: cfg.system },
+        ...history.map(m => ({ role: m.role, content: m.content }))
+      ];
+
+      // assistant live bubble
+      const assistant = { role: "assistant", content: "", at: Date.now() };
+      const liveEl = addMessage(assistant, "in", { asLive: true });
+
+      try {
+        if (cfg.stream) {
+          await fetchAIStream({
+            baseUrl: cfg.baseUrl,
+            apiKey: cfg.apiKey,
+            model: cfg.model,
+            temperature: cfg.temperature,
+            messages: apiMessages,
+            signal,
+            onDelta: (delta) => {
+              assistant.content += delta;
+              liveEl.innerHTML = mdSafe(assistant.content);
+              scrollToBottom(chatContainer);
+            }
+          });
+        } else {
+          const full = await fetchAIOnce({
+            baseUrl: cfg.baseUrl,
+            apiKey: cfg.apiKey,
+            model: cfg.model,
+            temperature: cfg.temperature,
+            messages: apiMessages,
+            signal
+          });
+          assistant.content = full;
+          liveEl.innerHTML = mdSafe(full);
+        }
+
+        pushMessage(activeChatId, assistant);
+        updateChat(activeChatId, { lastMessage: assistant.content.slice(0, 80) });
+        renderHome(); // keep list updated
+      } catch (err) {
+        const msg = signal.aborted ? "Stopped. You win." : `Server died. 💀 ${escapeHtml(err.message)}`;
+        liveEl.innerHTML = mdSafe(msg);
+      } finally {
+        showTyping(false);
+        stopBtn.classList.add("hidden");
+        stopBtn.classList.remove("flex");
+        aborter = null;
+      }
+    }
+
+    async function fetchAIOnce({ baseUrl, apiKey, model, temperature, messages, signal }) {
+      const url = (baseUrl || "").replace(/\/$/, "") + "/chat/completions";
+      const res = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${apiKey}`
+        },
+        body: JSON.stringify({ model, temperature, stream: false, messages }),
+        signal
+      });
+
+      if (!res.ok) {
+        let err; try { err = await res.json(); } catch {}
+        throw new Error(err?.error?.message || `HTTP ${res.status}`);
+      }
+      const data = await res.json();
+      return data?.choices?.[0]?.message?.content || "";
+    }
+
+    async function fetchAIStream({ baseUrl, apiKey, model, temperature, messages, signal, onDelta }) {
+      const url = (baseUrl || "").replace(/\/$/, "") + "/chat/completions";
+      const res = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${apiKey}`
+        },
+        body: JSON.stringify({ model, temperature, stream: true, messages }),
+        signal
+      });
+
+      if (!res.ok) {
+        let err; try { err = await res.json(); } catch {}
+        throw new Error(err?.error?.message || `HTTP ${res.status}`);
+      }
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder("utf-8");
+      let buffer = "";
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const parts = buffer.split("\n\n");
+        buffer = parts.pop() || "";
+
+        for (const part of parts) {
+          const lines = part.split("\n").map(l => l.trim()).filter(Boolean);
+          for (const line of lines) {
+            if (!line.startsWith("data:")) continue;
+            const payload = line.slice(5).trim();
+            if (payload === "[DONE]") return;
+
+            let json;
+            try { json = JSON.parse(payload); } catch { continue; }
+            const delta = json?.choices?.[0]?.delta?.content;
+            if (delta) onDelta(delta);
+          }
+        }
+      }
+    }
+
+    /***********************
+     * ACTIONS
+     ***********************/
+    btnOpenActions.addEventListener("click", () => actionsModal.classList.remove("hidden"));
+    actionsClose.addEventListener("click", () => actionsModal.classList.add("hidden"));
+
+    btnClearChat.addEventListener("click", () => {
+      if (!activeChatId) return;
+      saveMessages(activeChatId, []);
+      chatContainer.innerHTML = "";
+      actionsModal.classList.add("hidden");
+
+      const hint = { role: "assistant", content: "Chat wiped. Clean slate. Same bad habits.", at: Date.now() };
+      pushMessage(activeChatId, hint);
+      addMessage(hint, "in");
+      updateChat(activeChatId, { lastMessage: hint.content.slice(0, 80) });
+      renderHome();
+    });
+
+    btnExport.addEventListener("click", () => {
+      if (!activeChatId) return;
+      const msgs = loadMessages(activeChatId);
+      const blob = new Blob([JSON.stringify({ chatId: activeChatId, exportedAt: new Date().toISOString(), messages: msgs }, null, 2)], { type: "application/json" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `${activeChatId}_export.json`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    });
+
+    /***********************
+     * SETTINGS MODAL
+     ***********************/
+    const settingsModal = $("#settings-modal");
+    const settingsClose = $("#settings-close");
+    const settingsCancel = $("#settings-cancel");
+    const settingsSave = $("#settings-save");
+
+    const apiUrlInput = $("#api-url");
+    const apiKeyInput = $("#api-key");
+    const modelInput = $("#model-name");
+    const systemPromptInput = $("#system-prompt");
+    const streamToggle = $("#stream-toggle");
+    const tempRange = $("#temp");
+    const tempVal = $("#tempVal");
+
+    function openSettings() {
+      const cfg = loadConfig();
+      apiUrlInput.value = cfg.baseUrl;
+      apiKeyInput.value = cfg.apiKey;
+      modelInput.value = cfg.model;
+      systemPromptInput.value = cfg.system;
+      streamToggle.checked = !!cfg.stream;
+      tempRange.value = String(cfg.temperature ?? 0.7);
+      tempVal.textContent = String(cfg.temperature ?? 0.7);
+      settingsModal.classList.remove("hidden");
+    }
+    function closeSettings() { settingsModal.classList.add("hidden"); }
+
+    $("#btn-open-settings-home").addEventListener("click", openSettings);
+    $("#btn-open-settings-chat").addEventListener("click", openSettings);
+    $("#btn-open-settings-actions").addEventListener("click", () => { actionsModal.classList.add("hidden"); openSettings(); });
+
+    settingsClose.addEventListener("click", closeSettings);
+    settingsCancel.addEventListener("click", closeSettings);
+
+    tempRange.addEventListener("input", () => { tempVal.textContent = tempRange.value; });
+
+    settingsSave.addEventListener("click", () => {
+      const next = {
+        baseUrl: apiUrlInput.value.trim() || "https://api.openai.com/v1",
+        apiKey: apiKeyInput.value.trim(),
+        model: modelInput.value.trim() || "gpt-4o-mini",
+        system: systemPromptInput.value.trim() || loadConfig().system,
+        stream: streamToggle.checked,
+        temperature: Number(tempRange.value)
+      };
+      saveConfig(next);
+      closeSettings();
+
+      // subtle "Ghost" confirmation in chat if active
+      if (activeChatId) {
+        const hint = { role: "assistant", content: "Systems go. 🚀", at: Date.now() };
+        pushMessage(activeChatId, hint);
+        addMessage(hint, "in");
+        updateChat(activeChatId, { lastMessage: hint.content.slice(0, 80) });
+        renderHome();
+      }
+    });
+
+    /***********************
+     * INIT
+     ***********************/
+    function ensureDefaultChatIfNone() {
+      const chats = loadChats();
+      if (!chats.length) {
+        createChat({
+          title: "Buds",
+          subtitle: "Group Chat",
+          avatarSeed: "Ghost"
+        });
+      } else if (!activeChatId || !chats.some(c => c.id === activeChatId)) {
+        activeChatId = chats[0].id;
+        localStorage.setItem(LS.activeChat, activeChatId);
+      }
+    }
+
+    ensureDefaultChatIfNone();
+    renderHome();
+
+    // Optional: auto open last chat on refresh? Keep it home by default.
+    // openChat(activeChatId);
+
+    // Extra: plus button in chat opens actions (because why not)
+    $("#plus-btn").addEventListener("click", () => actionsModal.classList.remove("hidden"));
+  </script>
+</body>
+</html>
